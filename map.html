@@ -8,30 +8,78 @@
     <script src="leaflet/dist/leaflet.js"></script>
 
     <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-        }
-        #map {
-            width: 100%;
-            height: 100%;
+        body, html { margin: 0; padding: 0; height: 100%; }
+        #map { width: 100%; height: 100%; }
+        .mode-button {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: white;
+            border: 1px solid #ccc;
+            padding: 6px 12px;
+            cursor: pointer;
+            z-index: 1000;
+            font-family: sans-serif;
         }
     </style>
 </head>
 
 <body>
 <div id="map"></div>
+<button id="toggleMode" class="mode-button">Mode: group</button>
 
 <script>
     const map = L.map("map").setView([49.8419, 24.0315], 12);
-
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 19,
-    }).addTo(map);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(map);
 
     let markers = [];
+    let mode = "group"; // початковий режим: "group" або "schedule"
 
+    // Кольори для груп
+    const groupColors = {
+        "unknown": "grey",
+        "0": "grey",
+        "1.1": "red",
+        "2.1": "green",
+        "2.2": "lightgreen",
+        "3.1": "yellow",
+        "3.2": "lightyellow",
+        "4.1": "blue",
+        "4.2": "lightblue",
+        "5.1": "pink",
+        "5.2": "brown",
+        "6.1": "purple",
+    };
+
+    // Завантаження графіків відключень
+    let schedule = {};
+    async function loadSchedule() {
+        try {
+            const res = await fetch(`./schedule.json?t=${Date.now()}`);
+            schedule = await res.json();
+        } catch (err) {
+            console.error("Failed to load schedule:", err);
+            schedule = {};
+        }
+    }
+
+    // Функція, щоб визначити колір маркера по графіку та часу
+    function getColorBySchedule(group) {
+        if (!schedule[group] || schedule[group].length === 0) return "gray";
+        const now = new Date();
+        const curMinutes = now.getHours() * 60 + now.getMinutes();
+
+        for (const period of schedule[group]) {
+            const [fromH, fromM] = period.from.split(":").map(Number);
+            const [toH, toM] = period.to.split(":").map(Number);
+            const fromMinutes = fromH * 60 + fromM;
+            const toMinutes = toH * 60 + toM;
+            if (curMinutes >= fromMinutes && curMinutes <= toMinutes) return "red"; // відключення
+        }
+        return "green"; // світло є
+    }
+
+    // Основна функція
     async function loadAndPlot() {
         try {
             const res = await fetch(`./data/with_coords_temp.json?t=${Date.now()}`);
@@ -44,18 +92,22 @@
             data.forEach(obj => {
                 if (obj.lat == null || obj.lng == null) return;
 
+                let color = "gray";
+                if (mode === "group") {
+                    color = groupColors[obj.group] || "gray";
+                } else if (mode === "schedule") {
+                    color = getColorBySchedule(obj.group);
+                }
+
                 const marker = L.circleMarker([obj.lat, obj.lng], {
                     radius: 6,
-                    fillColor: "red",
+                    fillColor: color,
                     fillOpacity: 0.9,
                     color: "#000",
                     weight: 1
                 }).addTo(map);
 
-                marker.bindPopup(
-                    `<b>${obj.street} ${obj.building}</b><br>Group: ${obj.group}`
-                );
-
+                marker.bindPopup(`<b>${obj.street} ${obj.building}</b><br>Group: ${obj.group}`);
                 markers.push(marker);
             });
         } catch (err) {
@@ -64,10 +116,20 @@
     }
 
     // Початкове завантаження
-    loadAndPlot();
+    loadSchedule().then(loadAndPlot);
 
     // Періодичне оновлення кожні 15 секунд
-    setInterval(loadAndPlot, 15000);
+    setInterval(async () => {
+        await loadSchedule();
+        loadAndPlot();
+    }, 15000);
+
+    // Кнопка перемикання режимів
+    document.getElementById("toggleMode").addEventListener("click", () => {
+        mode = mode === "group" ? "schedule" : "group";
+        document.getElementById("toggleMode").textContent = "Mode: " + mode;
+        loadAndPlot();
+    });
 </script>
 </body>
 </html>
