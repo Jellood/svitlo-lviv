@@ -135,42 +135,59 @@ async function loadAndPlot() {
 
     const minutes = parseInt(document.getElementById("timeSlider").value);
 
-    allData.forEach(obj => {
-        if(obj.lat == null || obj.lng == null) return;
+    const batchSize = 200; // кількість маркерів за один раз
+    let index = 0;
 
-        const marker = L.circleMarker([obj.lat, obj.lng], {
-            radius: 6,
-            fillColor: getColorAtTime(obj, minutes),
-            fillOpacity: 0.9,
-            color: "#000",
-            weight: 1
-        });
+    function drawBatch() {
+        const slice = allData.slice(index, index + batchSize);
 
-        const currentPeriod = getCurrentPeriodAtTime(obj.group, minutes);
-        const nextPeriod = getNextPeriod(obj.group);
+        const newMarkers = slice.map(obj => {
+            if(obj.lat == null || obj.lng == null) return null;
 
-        const status = currentPeriod
-            ? "🔴 Відключено зараз"
-            : (schedule[obj.group] ? "🟢 Світло є" : "⚪ Немає даних");
+            const marker = L.circleMarker([obj.lat, obj.lng], {
+                radius: 6,
+                fillColor: getColorAtTime(obj, minutes),
+                fillOpacity: 0.9,
+                color: "#000",
+                weight: 1
+            });
 
-        const popupHtml = `
-            <b>${obj.street} ${obj.building}</b><br>
-            <b>Група:</b> ${obj.group}<br>
-            <b>Статус:</b> ${status}<br>
-            ${currentPeriod ? `<b>Поточний період:</b> ${currentPeriod.from} – ${currentPeriod.to}<br>` : ""}
-            ${nextPeriod ? `<b>Наступне відключення:</b> ${nextPeriod.from}<br>` : "<b>Наступних відключень:</b> немає<br>"}
-            <b>Оновлено графік:</b> ${new Date().toLocaleTimeString()}<br>
-            <b>Координати:</b> ${obj.lat.toFixed(5)}, ${obj.lng.toFixed(5)}<br>
-            <b>Мапа оновлена:</b> ${new Date().toLocaleTimeString()}
-        `;
+            const currentPeriod = getCurrentPeriodAtTime(obj.group, minutes);
+            const nextPeriod = getNextPeriod(obj.group);
 
-        marker.bindPopup(popupHtml);
-        markers.push({ marker, obj });
-        markerCluster.addLayer(marker);
-    });
+            const status = currentPeriod
+                ? "🔴 Відключено зараз"
+                : (schedule[obj.group] ? "🟢 Світло є" : "⚪ Немає даних");
 
-    updateInfoPanel(minutes);
+            const popupHtml = `
+                <b>${obj.street} ${obj.building}</b><br>
+                <b>Група:</b> ${obj.group}<br>
+                <b>Статус:</b> ${status}<br>
+                ${currentPeriod ? `<b>Поточний період:</b> ${currentPeriod.from} – ${currentPeriod.to}<br>` : ""}
+                ${nextPeriod ? `<b>Наступне відключення:</b> ${nextPeriod.from}<br>` : "<b>Наступних відключень:</b> немає<br>"}
+                <b>Оновлено графік:</b> ${new Date().toLocaleTimeString()}<br>
+                <b>Координати:</b> ${obj.lat.toFixed(5)}, ${obj.lng.toFixed(5)}<br>
+                <b>Мапа оновлена:</b> ${new Date().toLocaleTimeString()}
+            `;
+
+            marker.bindPopup(popupHtml);
+            markers.push({ marker, obj });
+            return marker;
+        }).filter(Boolean);
+
+        markerCluster.addLayers(newMarkers);
+
+        index += batchSize;
+        if(index < allData.length){
+            requestAnimationFrame(drawBatch);
+        } else {
+            updateInfoPanel(minutes);
+        }
+    }
+
+    drawBatch();
 }
+
 
 // --- Ініціалізація ---
 async function init() {
