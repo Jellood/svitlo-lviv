@@ -200,7 +200,7 @@ async function init() {
         } else {
             loadAndPlot();
         }
-    }, 15000);
+    }, 5000);
 }
 
 init();
