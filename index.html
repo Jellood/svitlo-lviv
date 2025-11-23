@@ -4,21 +4,34 @@
     <meta charset="UTF-8" />
     <title>Lviv Map – Houses</title>
 
+    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
+
+    <!-- Custom CSS -->
     <link rel="stylesheet" href="style.css" />
 
+    <!-- Leaflet JS -->
     <script src="leaflet/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
 </head>
 <body>
+
+<!-- ===========================
+     Map Container
+=========================== -->
 <div id="map"></div>
 
+<!-- ===========================
+     Controls
+=========================== -->
 <button id="toggleMode" class="mode-button">Mode: group</button>
 <input type="text" id="searchInput" class="search-box" placeholder="Search street or building..." />
 
-<!-- Легенда -->
+<!-- ===========================
+     Legend
+=========================== -->
 <div class="legend" id="legend">
     <div><span style="background:red"></span>1.1</div>
     <div><span style="background:darkred"></span>1.2</div>
@@ -33,9 +46,13 @@
     <div><span style="background:purple"></span>6.1</div>
     <div><span style="background:violet"></span>6.2</div>
 </div>
-<!-- Інформаційна панель -->
+
+<!-- ===========================
+     Info Panel
+=========================== -->
 <div class="info-panel" id="infoPanel">
     <h4>Інформація</h4>
+
     <div>Всього будинків: <span id="totalHouses">0</span></div>
     <div>Світло є: <span id="housesWithLight">0</span></div>
     <div>Без світла: <span id="housesWithoutLight">0</span></div>
@@ -43,14 +60,18 @@
     <div>Група з найбільшою кількістю відключень: <span id="groupMaxOff">-</span></div>
 
     <hr>
+
     <div>Виберіть час для перевірки:</div>
     <input type="range" id="timeSlider" min="0" max="1439" value="0">
     <div>Вибраний час: <span id="sliderTime">00:00</span></div>
-    <button id="nowButton">На поточний час</button>
-    <button id="toggleTheme">Тема: світла</button>
 
+    <div class="info-buttons">
+        <button id="nowButton">На поточний час</button>
+        <button id="toggleTheme">Тема: світла</button>
+    </div>
 </div>
 
+<!-- Main JS -->
 <script src="main.js"></script>
 </body>
 </html>

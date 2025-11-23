@@ -1,19 +1,26 @@
+// ===========================
+// Map Initialization
+// ===========================
 const map = L.map("map").setView([49.8419, 24.0315], 12);
 
-// --- TileLayers ---
-const lightLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 });
-const darkLayer = L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-    subdomains: "abcd",
-    maxZoom: 19
-});
+// --- Tile Layers ---
+const lightLayer = L.tileLayer(
+    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    { maxZoom: 19 }
+);
+
+const darkLayer = L.tileLayer(
+    "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+    { subdomains: "abcd", maxZoom: 19 }
+);
 
 let currentLayer = lightLayer.addTo(map);
 let theme = "light";
 
-// --- Кнопка теми ---
+// --- Theme Toggle Button ---
 document.getElementById("toggleTheme").addEventListener("click", () => {
     map.removeLayer(currentLayer);
-    if(theme === "light"){
+    if (theme === "light") {
         currentLayer = darkLayer.addTo(map);
         theme = "dark";
         document.getElementById("toggleTheme").textContent = "Тема: темна";
@@ -24,6 +31,9 @@ document.getElementById("toggleTheme").addEventListener("click", () => {
     }
 });
 
+// ===========================
+// Marker Cluster & Mode
+// ===========================
 let mode = "group";
 const markerCluster = L.markerClusterGroup({
     showCoverageOnHover: false,
@@ -33,6 +43,7 @@ const markerCluster = L.markerClusterGroup({
 });
 map.addLayer(markerCluster);
 
+// Group color mapping
 const groupColors = {
     "unknown":"gray","0":"gray",
     "1.1":"red","1.2":"darkred",
@@ -43,12 +54,17 @@ const groupColors = {
     "6.1":"purple","6.2":"violet"
 };
 
+// ===========================
+// Data Storage
+// ===========================
 let schedule = {};
 let allData = [];
 let markers = [];
 let followRealTime = true;
 
-// --- Завантаження графіку ---
+// ===========================
+// Load Schedule
+// ===========================
 async function loadSchedule() {
     try {
         const res = await fetch(`./schedule.json?t=${Date.now()}`);
@@ -58,13 +74,16 @@ async function loadSchedule() {
     }
 }
 
-// --- Періоди ---
+// ===========================
+// Schedule Helpers
+// ===========================
 function getCurrentPeriodAtTime(group, minutes) {
     if (!Array.isArray(schedule[group])) return null;
     return schedule[group].find(p => {
-        const [fh,fm] = p.from.split(":").map(Number);
-        const [th,tm] = p.to.split(":").map(Number);
-        const f = fh*60+fm, t = th*60+tm;
+        const [fh, fm] = p.from.split(":").map(Number);
+        const [th, tm] = p.to.split(":").map(Number);
+        const f = fh*60 + fm;
+        const t = th*60 + tm;
         return minutes >= f && minutes <= t;
     }) || null;
 }
@@ -80,39 +99,40 @@ function getNextPeriod(group) {
     return upcoming.length ? upcoming[0].data : null;
 }
 
-// --- Кольори маркерів ---
+// ===========================
+// Marker Color Logic
+// ===========================
 function getColorAtTime(obj, minutes) {
-    if(mode === "group") return groupColors[obj.group] || "gray";
-    if(!Array.isArray(schedule[obj.group])) return "green";
+    if (mode === "group") return groupColors[obj.group] || "gray";
+    if (!Array.isArray(schedule[obj.group])) return "green";
     const current = getCurrentPeriodAtTime(obj.group, minutes);
     return current ? "red" : "green";
 }
 
-// --- Інформаційна панель ---
+// ===========================
+// Info Panel Update
+// ===========================
 function updateInfoPanel(selectedMinutes = null) {
+    const minutes = selectedMinutes ?? (new Date().getHours()*60 + new Date().getMinutes());
     let total = allData.length;
     let withLight = 0;
     let withoutLight = 0;
     const groupOffCounts = {};
 
-    const minutes = selectedMinutes !== null ? selectedMinutes : new Date().getHours()*60 + new Date().getMinutes();
-
     allData.forEach(obj => {
         const current = getCurrentPeriodAtTime(obj.group, minutes);
-        if(current){
+        if (current) {
             withoutLight++;
             groupOffCounts[obj.group] = (groupOffCounts[obj.group] || 0) + 1;
-        } else if(schedule[obj.group]){
+        } else if (schedule[obj.group]) {
             withLight++;
         }
     });
 
     const percentOff = total ? ((withoutLight / total) * 100).toFixed(1) : 0;
-    let groupMaxOff = "-";
-    if(Object.keys(groupOffCounts).length) {
-        groupMaxOff = Object.entries(groupOffCounts)
-            .sort((a,b)=>b[1]-a[1])[0][0];
-    }
+    const groupMaxOff = Object.keys(groupOffCounts).length
+        ? Object.entries(groupOffCounts).sort((a,b)=>b[1]-a[1])[0][0]
+        : "-";
 
     document.getElementById("totalHouses").textContent = total;
     document.getElementById("housesWithLight").textContent = withLight;
@@ -121,7 +141,9 @@ function updateInfoPanel(selectedMinutes = null) {
     document.getElementById("groupMaxOff").textContent = groupMaxOff;
 }
 
-// --- Завантаження та відображення маркерів ---
+// ===========================
+// Load & Plot Markers
+// ===========================
 async function loadAndPlot() {
     try {
         const res = await fetch(`./data/addresses_with_coords.json?t=${Date.now()}`);
@@ -134,13 +156,11 @@ async function loadAndPlot() {
     markers = [];
 
     const minutes = parseInt(document.getElementById("timeSlider").value);
-
-    const batchSize = 200; // кількість маркерів за один раз
+    const batchSize = 200;
     let index = 0;
 
     function drawBatch() {
         const slice = allData.slice(index, index + batchSize);
-
         const newMarkers = slice.map(obj => {
             if(obj.lat == null || obj.lng == null) return null;
 
@@ -154,10 +174,7 @@ async function loadAndPlot() {
 
             const currentPeriod = getCurrentPeriodAtTime(obj.group, minutes);
             const nextPeriod = getNextPeriod(obj.group);
-
-            const status = currentPeriod
-                ? "🔴 Відключено зараз"
-                : (schedule[obj.group] ? "🟢 Світло є" : "⚪ Немає даних");
+            const status = currentPeriod ? "🔴 Відключено зараз" : (schedule[obj.group] ? "🟢 Світло є" : "⚪ Немає даних");
 
             const popupHtml = `
                 <b>${obj.street} ${obj.building}</b><br>
@@ -176,43 +193,41 @@ async function loadAndPlot() {
         }).filter(Boolean);
 
         markerCluster.addLayers(newMarkers);
-
         index += batchSize;
-        if(index < allData.length){
-            requestAnimationFrame(drawBatch);
-        } else {
-            updateInfoPanel(minutes);
-        }
+        if (index < allData.length) requestAnimationFrame(drawBatch);
+        else updateInfoPanel(minutes);
     }
 
     drawBatch();
 }
 
-
-// --- Ініціалізація ---
+// ===========================
+// Initialization
+// ===========================
 async function init() {
     await loadSchedule();
     await loadAndPlot();
     setInterval(async () => {
         await loadSchedule();
-        if(followRealTime){
-            setSliderToCurrentTime();
-        } else {
-            loadAndPlot();
-        }
+        if(followRealTime) setSliderToCurrentTime();
+        else loadAndPlot();
     }, 5000);
 }
 
 init();
 
-// --- Перемикання режиму ---
+// ===========================
+// Mode Toggle
+// ===========================
 document.getElementById("toggleMode").addEventListener("click", () => {
     mode = mode === "group" ? "schedule" : "group";
     document.getElementById("toggleMode").textContent = "Mode: " + mode;
     loadAndPlot();
 });
 
-// --- Пошук по вулиці / номеру ---
+// ===========================
+// Search by Street/Building
+// ===========================
 document.getElementById("searchInput").addEventListener("input", (e) => {
     const q = e.target.value.trim().toLowerCase();
     markerCluster.clearLayers();
@@ -222,7 +237,9 @@ document.getElementById("searchInput").addEventListener("input", (e) => {
     });
 });
 
-// --- Timeline слайдер ---
+// ===========================
+// Timeline Slider
+// ===========================
 const timeSlider = document.getElementById("timeSlider");
 const sliderTime = document.getElementById("sliderTime");
 
@@ -233,31 +250,28 @@ function updateSliderTimeDisplay() {
 }
 
 timeSlider.addEventListener("input", () => {
-    followRealTime = false; // користувач сам обрав час
+    followRealTime = false;
     updateSliderTimeDisplay();
     const minutes = parseInt(timeSlider.value);
-    markers.forEach(({ marker, obj }) => {
-        marker.setStyle({ fillColor: getColorAtTime(obj, minutes) });
-    });
+    markers.forEach(({ marker, obj }) => marker.setStyle({ fillColor: getColorAtTime(obj, minutes) }));
     updateInfoPanel(minutes);
 });
 
 updateSliderTimeDisplay();
 
-// --- Кнопка "На поточний час" ---
+// ===========================
+// "Now" Button
+// ===========================
 document.getElementById("nowButton").addEventListener("click", () => {
     followRealTime = true;
     setSliderToCurrentTime();
 });
 
-// --- Встановлення слайдера на поточний час ---
 function setSliderToCurrentTime() {
     const now = new Date();
     const minutes = now.getHours()*60 + now.getMinutes();
     timeSlider.value = minutes;
     updateSliderTimeDisplay();
-    markers.forEach(({ marker, obj }) => {
-        marker.setStyle({ fillColor: getColorAtTime(obj, minutes) });
-    });
+    markers.forEach(({ marker, obj }) => marker.setStyle({ fillColor: getColorAtTime(obj, minutes) }));
     updateInfoPanel(minutes);
 }
