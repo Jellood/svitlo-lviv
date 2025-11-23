@@ -5,131 +5,52 @@
     <title>Lviv Map – Houses</title>
 
     <link rel="stylesheet" href="leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
+    <link rel="stylesheet" href="style.css" />
+
     <script src="leaflet/dist/leaflet.js"></script>
-
-    <style>
-        body, html { margin: 0; padding: 0; height: 100%; }
-        #map { width: 100%; height: 100%; }
-        .mode-button {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background: white;
-            border: 1px solid #ccc;
-            padding: 6px 12px;
-            cursor: pointer;
-            z-index: 1000;
-            font-family: sans-serif;
-        }
-    </style>
+    <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
 </head>
-
 <body>
 <div id="map"></div>
+
 <button id="toggleMode" class="mode-button">Mode: group</button>
+<input type="text" id="searchInput" class="search-box" placeholder="Search street or building..." />
 
-<script>
-    const map = L.map("map").setView([49.8419, 24.0315], 12);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(map);
+<!-- Легенда -->
+<div class="legend" id="legend">
+    <div><span style="background:red"></span>1.1</div>
+    <div><span style="background:darkred"></span>1.2</div>
+    <div><span style="background:green"></span>2.1</div>
+    <div><span style="background:lightgreen"></span>2.2</div>
+    <div><span style="background:yellow"></span>3.1</div>
+    <div><span style="background:lightyellow"></span>3.2</div>
+    <div><span style="background:blue"></span>4.1</div>
+    <div><span style="background:lightblue"></span>4.2</div>
+    <div><span style="background:pink"></span>5.1</div>
+    <div><span style="background:brown"></span>5.2</div>
+    <div><span style="background:purple"></span>6.1</div>
+    <div><span style="background:violet"></span>6.2</div>
+</div>
+<!-- Інформаційна панель -->
+<div class="info-panel" id="infoPanel">
+    <h4>Інформація</h4>
+    <div>Всього будинків: <span id="totalHouses">0</span></div>
+    <div>Світло є: <span id="housesWithLight">0</span></div>
+    <div>Без світла: <span id="housesWithoutLight">0</span></div>
+    <div>Відсоток відключених: <span id="percentOff">0%</span></div>
+    <div>Група з найбільшою кількістю відключень: <span id="groupMaxOff">-</span></div>
 
-    let markers = [];
-    let mode = "group"; // початковий режим: "group" або "schedule"
+    <hr>
+    <div>Виберіть час для перевірки:</div>
+    <input type="range" id="timeSlider" min="0" max="1439" value="0">
+    <div>Вибраний час: <span id="sliderTime">00:00</span></div>
+    <button id="nowButton">На поточний час</button>
+    <button id="toggleTheme">Тема: світла</button>
 
-    // Кольори для груп
-    const groupColors = {
-        "unknown": "grey",
-        "0": "grey",
-        "1.1": "red",
-        "2.1": "green",
-        "2.2": "lightgreen",
-        "3.1": "yellow",
-        "3.2": "lightyellow",
-        "4.1": "blue",
-        "4.2": "lightblue",
-        "5.1": "pink",
-        "5.2": "brown",
-        "6.1": "purple",
-    };
+</div>
 
-    // Завантаження графіків відключень
-    let schedule = {};
-    async function loadSchedule() {
-        try {
-            const res = await fetch(`./schedule.json?t=${Date.now()}`);
-            schedule = await res.json();
-        } catch (err) {
-            console.error("Failed to load schedule:", err);
-            schedule = {};
-        }
-    }
-
-    // Функція, щоб визначити колір маркера по графіку та часу
-    function getColorBySchedule(group) {
-        if (!schedule[group] || schedule[group].length === 0) return "gray";
-        const now = new Date();
-        const curMinutes = now.getHours() * 60 + now.getMinutes();
-
-        for (const period of schedule[group]) {
-            const [fromH, fromM] = period.from.split(":").map(Number);
-            const [toH, toM] = period.to.split(":").map(Number);
-            const fromMinutes = fromH * 60 + fromM;
-            const toMinutes = toH * 60 + toM;
-            if (curMinutes >= fromMinutes && curMinutes <= toMinutes) return "red"; // відключення
-        }
-        return "green"; // світло є
-    }
-
-    // Основна функція
-    async function loadAndPlot() {
-        try {
-            const res = await fetch(`./data/with_coords_temp.json?t=${Date.now()}`);
-            const data = await res.json();
-
-            // Видаляємо старі маркери
-            markers.forEach(m => map.removeLayer(m));
-            markers = [];
-
-            data.forEach(obj => {
-                if (obj.lat == null || obj.lng == null) return;
-
-                let color = "gray";
-                if (mode === "group") {
-                    color = groupColors[obj.group] || "gray";
-                } else if (mode === "schedule") {
-                    color = getColorBySchedule(obj.group);
-                }
-
-                const marker = L.circleMarker([obj.lat, obj.lng], {
-                    radius: 6,
-                    fillColor: color,
-                    fillOpacity: 0.9,
-                    color: "#000",
-                    weight: 1
-                }).addTo(map);
-
-                marker.bindPopup(`<b>${obj.street} ${obj.building}</b><br>Group: ${obj.group}`);
-                markers.push(marker);
-            });
-        } catch (err) {
-            console.error("Failed to load coordinates:", err);
-        }
-    }
-
-    // Початкове завантаження
-    loadSchedule().then(loadAndPlot);
-
-    // Періодичне оновлення кожні 15 секунд
-    setInterval(async () => {
-        await loadSchedule();
-        loadAndPlot();
-    }, 15000);
-
-    // Кнопка перемикання режимів
-    document.getElementById("toggleMode").addEventListener("click", () => {
-        mode = mode === "group" ? "schedule" : "group";
-        document.getElementById("toggleMode").textContent = "Mode: " + mode;
-        loadAndPlot();
-    });
-</script>
+<script src="main.js"></script>
 </body>
 </html>
