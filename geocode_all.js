@@ -1,4 +1,5 @@
 import fs from "fs";
+import fetch from "node-fetch";
 
 // ===========================
 // Load Full Address List
@@ -108,7 +109,7 @@ async function main() {
         // Statistics
         // =======================
         const totalChecked = withCoords.length + withoutCoords.length;
-        const percentFound = ((withCoords.length / totalChecked) * 100).toFixed(2);
+        const percentFound = totalChecked ? ((withCoords.length / totalChecked) * 100).toFixed(2) : "0.00";
         console.log(`✅ Found: ${withCoords.length} | ❌ Unknown: ${withoutCoords.length} | % Found: ${percentFound}%\n`);
 
         // Save progress after each address
