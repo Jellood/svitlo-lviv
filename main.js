@@ -4,15 +4,12 @@
 const map = L.map("map").setView([49.8419, 24.0315], 12);
 
 // --- Tile Layers ---
-const lightLayer = L.tileLayer(
-    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-    { maxZoom: 19 }
-);
+const lightLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom: 19});
 
-const darkLayer = L.tileLayer(
-    "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-    { subdomains: "abcd", maxZoom: 19 }
-);
+const darkLayer = L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+    subdomains: "abcd",
+    maxZoom: 19
+});
 
 let currentLayer = lightLayer.addTo(map);
 let theme = "light";
@@ -36,22 +33,26 @@ document.getElementById("toggleTheme").addEventListener("click", () => {
 // ===========================
 let mode = "group";
 const markerCluster = L.markerClusterGroup({
-    showCoverageOnHover: false,
-    maxClusterRadius: 50,
-    spiderfyOnMaxZoom: true,
-    disableClusteringAtZoom: 18
+    showCoverageOnHover: false, maxClusterRadius: 50, spiderfyOnMaxZoom: true, disableClusteringAtZoom: 18
 });
 map.addLayer(markerCluster);
 
 // Group color mapping
 const groupColors = {
-    "unknown":"gray","0":"gray",
-    "1.1":"red","1.2":"darkred",
-    "2.1":"green","2.2":"lightgreen",
-    "3.1":"yellow","3.2":"lightyellow",
-    "4.1":"blue","4.2":"lightblue",
-    "5.1":"pink","5.2":"brown",
-    "6.1":"purple","6.2":"violet"
+    "unknown": "gray",
+    "0": "gray",
+    "1.1": "red",
+    "1.2": "darkred",
+    "2.1": "green",
+    "2.2": "lightgreen",
+    "3.1": "yellow",
+    "3.2": "lightyellow",
+    "4.1": "blue",
+    "4.2": "lightblue",
+    "5.1": "pink",
+    "5.2": "brown",
+    "6.1": "purple",
+    "6.2": "violet"
 };
 
 // ===========================
@@ -82,8 +83,8 @@ function getCurrentPeriodAtTime(group, minutes) {
     return schedule[group].find(p => {
         const [fh, fm] = p.from.split(":").map(Number);
         const [th, tm] = p.to.split(":").map(Number);
-        const f = fh*60 + fm;
-        const t = th*60 + tm;
+        const f = fh * 60 + fm;
+        const t = th * 60 + tm;
         return minutes >= f && minutes <= t;
     }) || null;
 }
@@ -91,11 +92,11 @@ function getCurrentPeriodAtTime(group, minutes) {
 function getNextPeriod(group) {
     if (!Array.isArray(schedule[group])) return null;
     const now = new Date();
-    const cur = now.getHours()*60 + now.getMinutes();
+    const cur = now.getHours() * 60 + now.getMinutes();
     const upcoming = schedule[group]
-        .map(p => ({ start: p.from.split(":").map(Number)[0]*60 + p.from.split(":").map(Number)[1], data: p }))
+        .map(p => ({start: p.from.split(":").map(Number)[0] * 60 + p.from.split(":").map(Number)[1], data: p}))
         .filter(p => p.start > cur)
-        .sort((a,b) => a.start - b.start);
+        .sort((a, b) => a.start - b.start);
     return upcoming.length ? upcoming[0].data : null;
 }
 
@@ -113,7 +114,7 @@ function getColorAtTime(obj, minutes) {
 // Info Panel Update
 // ===========================
 function updateInfoPanel(selectedMinutes = null) {
-    const minutes = selectedMinutes ?? (new Date().getHours()*60 + new Date().getMinutes());
+    const minutes = selectedMinutes ?? (new Date().getHours() * 60 + new Date().getMinutes());
     let total = allData.length;
     let withLight = 0;
     let withoutLight = 0;
@@ -130,9 +131,7 @@ function updateInfoPanel(selectedMinutes = null) {
     });
 
     const percentOff = total ? ((withoutLight / total) * 100).toFixed(1) : 0;
-    const groupMaxOff = Object.keys(groupOffCounts).length
-        ? Object.entries(groupOffCounts).sort((a,b)=>b[1]-a[1])[0][0]
-        : "-";
+    const groupMaxOff = Object.keys(groupOffCounts).length ? Object.entries(groupOffCounts).sort((a, b) => b[1] - a[1])[0][0] : "-";
 
     document.getElementById("totalHouses").textContent = total;
     document.getElementById("housesWithLight").textContent = withLight;
@@ -162,14 +161,10 @@ async function loadAndPlot() {
     function drawBatch() {
         const slice = allData.slice(index, index + batchSize);
         const newMarkers = slice.map(obj => {
-            if(obj.lat == null || obj.lng == null) return null;
+            if (obj.lat == null || obj.lng == null) return null;
 
             const marker = L.circleMarker([obj.lat, obj.lng], {
-                radius: 6,
-                fillColor: getColorAtTime(obj, minutes),
-                fillOpacity: 0.9,
-                color: "#000",
-                weight: 1
+                radius: 6, fillColor: getColorAtTime(obj, minutes), fillOpacity: 0.9, color: "#000", weight: 1
             });
 
             const currentPeriod = getCurrentPeriodAtTime(obj.group, minutes);
@@ -188,14 +183,13 @@ async function loadAndPlot() {
             `;
 
             marker.bindPopup(popupHtml);
-            markers.push({ marker, obj });
+            markers.push({marker, obj});
             return marker;
         }).filter(Boolean);
 
         markerCluster.addLayers(newMarkers);
         index += batchSize;
-        if (index < allData.length) requestAnimationFrame(drawBatch);
-        else updateInfoPanel(minutes);
+        if (index < allData.length) requestAnimationFrame(drawBatch); else updateInfoPanel(minutes);
     }
 
     drawBatch();
@@ -209,8 +203,7 @@ async function init() {
     await loadAndPlot();
     setInterval(async () => {
         await loadSchedule();
-        if(followRealTime) setSliderToCurrentTime();
-        else loadAndPlot();
+        if (followRealTime) setSliderToCurrentTime(); else loadAndPlot();
     }, 5000);
 }
 
@@ -231,9 +224,9 @@ document.getElementById("toggleMode").addEventListener("click", () => {
 document.getElementById("searchInput").addEventListener("input", (e) => {
     const q = e.target.value.trim().toLowerCase();
     markerCluster.clearLayers();
-    markers.forEach(({ marker, obj }) => {
+    markers.forEach(({marker, obj}) => {
         const s = `${obj.street} ${obj.building}`.toLowerCase();
-        if(!q || s.includes(q)) markerCluster.addLayer(marker);
+        if (!q || s.includes(q)) markerCluster.addLayer(marker);
     });
 });
 
@@ -246,14 +239,14 @@ const sliderTime = document.getElementById("sliderTime");
 function updateSliderTimeDisplay() {
     const h = Math.floor(timeSlider.value / 60);
     const m = timeSlider.value % 60;
-    sliderTime.textContent = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
+    sliderTime.textContent = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
 }
 
 timeSlider.addEventListener("input", () => {
     followRealTime = false;
     updateSliderTimeDisplay();
     const minutes = parseInt(timeSlider.value);
-    markers.forEach(({ marker, obj }) => marker.setStyle({ fillColor: getColorAtTime(obj, minutes) }));
+    markers.forEach(({marker, obj}) => marker.setStyle({fillColor: getColorAtTime(obj, minutes)}));
     updateInfoPanel(minutes);
 });
 
@@ -269,9 +262,9 @@ document.getElementById("nowButton").addEventListener("click", () => {
 
 function setSliderToCurrentTime() {
     const now = new Date();
-    const minutes = now.getHours()*60 + now.getMinutes();
+    const minutes = now.getHours() * 60 + now.getMinutes();
     timeSlider.value = minutes;
     updateSliderTimeDisplay();
-    markers.forEach(({ marker, obj }) => marker.setStyle({ fillColor: getColorAtTime(obj, minutes) }));
+    markers.forEach(({marker, obj}) => marker.setStyle({fillColor: getColorAtTime(obj, minutes)}));
     updateInfoPanel(minutes);
 }

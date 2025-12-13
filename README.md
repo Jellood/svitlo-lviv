@@ -1,6 +1,7 @@
 # ⚡ Lviv Electricity Map
 
-Interactive map of Lviv houses showing electricity status, outages, and schedules. Combines geocoded addresses with real-time visualization.
+Interactive map of Lviv houses showing electricity status, outages, and schedules. Combines geocoded addresses with
+real-time visualization.
 
 ---
 
@@ -51,12 +52,12 @@ node geocode_all.js
 
 - Progress saved in `data/progress.json` → **can stop and resume** anytime.
 - Temporary results stored in:
-  - `data/with_coords_temp.json`
-  - `data/unknown_temp.json`
+    - `data/with_coords_temp.json`
+    - `data/unknown_temp.json`
 - Final results:
-  - `addresses_with_coords.json` — houses with coordinates
-  - `all_sorted.json` — sorted list with coordinates
-  - `unknown_coordinates.json` — addresses not found
+    - `addresses_with_coords.json` — houses with coordinates
+    - `all_sorted.json` — sorted list with coordinates
+    - `unknown_coordinates.json` — addresses not found
 
 ✅ Console shows **status per house** and percentage of successful geocoding.
 
@@ -69,6 +70,7 @@ node geocode_all.js
 ```bash
 node server.js
 ```
+
 Open in browser: `http://localhost:5500`
 
 #### Method 2 – Using `http-server`
@@ -76,6 +78,7 @@ Open in browser: `http://localhost:5500`
 ```bash
 npx http-server . -p 5500
 ```
+
 Open in browser: `http://localhost:5500`
 
 - **Red/colored markers** show houses with coordinates and their electricity status.
